@@ -11,7 +11,6 @@ export const Counter: VFC<{ label: string; field: string }> = ({
   const { data, isLoading } = useQuery(["counter", key], () =>
     serverAPI.getCounter({ key })
   );
-  console.log({ data, key });
   return (
     <Field label={label} focusable>
       {isLoading ? "Loading..." : data + ''}

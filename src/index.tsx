@@ -132,7 +132,6 @@ export default definePlugin((serverApi: ServerAPI) => {
   const proxy = proxyServerAPI<ServerAPIType>(serverApi);
   const register = SteamClient.GameSessions.RegisterForScreenshotNotification(
     async ({ hScreenshot, strOperation, unAppID, details }) => {
-      console.log(hScreenshot, strOperation, unAppID, details);
       const enabled = await proxy.getSetting({
         key: "enabled",
         defaults: true,

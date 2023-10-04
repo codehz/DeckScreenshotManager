@@ -15,7 +15,6 @@ export function proxyServerAPI<T>(api: ServerAPI) {
         obj[key] ??
         (async (args: any = {}) => {
           const response = await api.callPluginMethod(key, args);
-          console.log({ key, args, response });
           if (response.success) {
             return response.result;
           } else throw new Error("Failed to call plugin method " + key);
