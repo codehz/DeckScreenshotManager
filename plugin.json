@@ -3,8 +3,8 @@
   "author": "CodeHz",
   "flags": ["debug", "_root"],
   "publish": {
-    "tags": ["screenshots"],
-    "description": "Add screenshot manager because valve don't do it. Auto upload screenshots to cloud(currently only official storage is supported).",
-    "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
+    "tags": ["screenshots", "uploader"],
+    "description": "Add screenshot auto uploader because valve don't do it. Auto upload screenshots to cloud(currently only official storage is supported).",
+    "image": "https://github.com/codehz/DeckScreenshotManager/raw/main/assets/logo.png"
   }
 }
