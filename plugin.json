@@ -1,10 +1,10 @@
 {
-  "name": "Deck Screenshot Manager",
+  "name": "ScreenshotUploader",
   "author": "CodeHz",
   "flags": ["debug", "_root"],
   "publish": {
-    "tags": ["template", "root"],
-    "description": "Decky example plugin.",
+    "tags": ["screenshots"],
+    "description": "Add screenshot manager because valve don't do it. Auto upload screenshots to cloud(currently only official storage is supported).",
     "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
   }
 }
