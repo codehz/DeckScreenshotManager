@@ -1,105 +1,187 @@
 import {
-  ButtonItem,
   definePlugin,
-  DialogButton,
-  Menu,
-  MenuItem,
   PanelSection,
   PanelSectionRow,
-  Router,
   ServerAPI,
-  showContextMenu,
   staticClasses,
+  ToggleField,
 } from "decky-frontend-lib";
-import { VFC } from "react";
-import { FaShip } from "react-icons/fa";
+import { useContext, VFC } from "react";
 
-import logo from "../assets/logo.png";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "react-query";
+import { proxyServerAPI, ServerAPIContext, ServerAPIType } from "./api";
+import { Counter } from "./Components/Counter";
+import { icon } from "./icon";
+import { GlobalQueryClient } from "./imported";
 
-// interface AddMethodArgs {
-//   left: number;
-//   right: number;
-// }
-
-const Content: VFC<{ serverAPI: ServerAPI }> = ({serverAPI}) => {
-  // const [result, setResult] = useState<number | undefined>();
-
-  // const onClick = async () => {
-  //   const result = await serverAPI.callPluginMethod<AddMethodArgs, number>(
-  //     "add",
-  //     {
-  //       left: 2,
-  //       right: 2,
-  //     }
-  //   );
-  //   if (result.success) {
-  //     setResult(result.result);
-  //   }
-  // };
-
+const Content: VFC = () => {
+  const serverAPI = useContext(ServerAPIContext);
+  const { data: enabled = true, isLoading } = useQuery(
+    "decky-screenshots-enabled",
+    () =>
+      serverAPI.getSetting<boolean>({
+        key: "enabled",
+        defaults: true,
+      })
+  );
+  const client = useQueryClient();
+  const mutate = useMutation(
+    async (value: boolean) => {
+      await serverAPI.putSetting({
+        key: "enabled",
+        value,
+      });
+    },
+    {
+      onMutate(data) {
+        const old = client.getQueryData("decky-screenshots-enabled");
+        client.setQueryData("decky-screenshots-enabled", data);
+        return { old };
+      },
+      onError(err, _data, context) {
+        serverAPI.toaster.toast({
+          title: "Error",
+          body: err + "",
+        });
+        client.setQueryData("decky-screenshots-enabled", context?.old ?? true);
+      },
+    }
+  );
   return (
-    <PanelSection title="Panel Section">
-      <PanelSectionRow>
-        <ButtonItem
-          layout="below"
-          onClick={(e) =>
-            showContextMenu(
-              <Menu label="Menu" cancelText="CAAAANCEL" onCancel={() => {}}>
-                <MenuItem onSelected={() => {}}>Item #1</MenuItem>
-                <MenuItem onSelected={() => {}}>Item #2</MenuItem>
-                <MenuItem onSelected={() => {}}>Item #3</MenuItem>
-              </Menu>,
-              e.currentTarget ?? window
-            )
-          }
-        >
-          Server says yolo
-        </ButtonItem>
-      </PanelSectionRow>
-
-      <PanelSectionRow>
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <img src={logo} />
-        </div>
-      </PanelSectionRow>
-
-      <PanelSectionRow>
-        <ButtonItem
-          layout="below"
-          onClick={() => {
-            Router.CloseSideMenus();
-            Router.Navigate("/decky-plugin-test");
-          }}
-        >
-          Router
-        </ButtonItem>
-      </PanelSectionRow>
-    </PanelSection>
+    <>
+      <PanelSection title="settings">
+        <PanelSectionRow>
+          <ToggleField
+            checked={enabled}
+            disabled={isLoading}
+            label="Enabled"
+            onChange={(value) => mutate.mutate(value)}
+          />
+        </PanelSectionRow>
+      </PanelSection>
+      <PanelSection title="counter">
+        <PanelSectionRow>
+          <Counter label="Upload count" field="all" />
+        </PanelSectionRow>
+      </PanelSection>
+    </>
   );
 };
 
-const DeckyPluginRouterTest: VFC = () => {
-  return (
-    <div style={{ marginTop: "50px", color: "white" }}>
-      Hello World!
-      <DialogButton onClick={() => Router.NavigateToLibraryTab()}>
-        Go to Library
-      </DialogButton>
-    </div>
-  );
-};
+declare global {
+  const enum FilePrivacyState {
+    Invalid = -1,
+    Private = 2,
+    FriendsOnly = 4,
+    Public = 8,
+    Unlisted = 16,
+  }
+  interface Screenshot {
+    nAppID: number;
+    strGameID: string;
+    hHandle: number;
+    nWidth: number;
+    nHeight: number;
+    nCreated: number; // timestamp
+    ePrivacy: FilePrivacyState;
+    strCaption: "";
+    bSpoilers: boolean;
+    strUrl: string;
+    bUploaded: boolean;
+    ugcHandle: string;
+  }
+  interface Screenshots {
+    GetLocalScreenshot(): Promise<Screenshot[]>;
+    UploadLocalScreenshot(
+      appId: string,
+      hHandle: number,
+      filePrivacyState: FilePrivacyState
+    ): Promise<boolean>;
+  }
+  interface Unregisterable {
+    unregister(): void;
+  }
+  interface ScreenshotNotification {
+    details?: Screenshot;
+    hScreenshot: number;
+    strOperation: "written" | "deleted" | (string & {});
+    unAppID: number;
+  }
+  interface GameSessions {
+    RegisterForScreenshotNotification(
+      callback: (screenshotNotification: ScreenshotNotification) => void
+    ): Unregisterable;
+  }
+  interface Apps {}
+  interface SteamClient {
+    Screenshots: Screenshots;
+    GameSessions: GameSessions;
+  }
+  var SteamClient: SteamClient;
+}
+
+const LocalQueryClient = new QueryClient();
 
 export default definePlugin((serverApi: ServerAPI) => {
-  serverApi.routerHook.addRoute("/decky-plugin-test", DeckyPluginRouterTest, {
-    exact: true,
-  });
-
+  const proxy = proxyServerAPI<ServerAPIType>(serverApi);
+  const register = SteamClient.GameSessions.RegisterForScreenshotNotification(
+    async ({ hScreenshot, strOperation, unAppID, details }) => {
+      console.log(hScreenshot, strOperation, unAppID, details);
+      const enabled = await proxy.getSetting({
+        key: "enabled",
+        defaults: true,
+      });
+      if (!enabled) return;
+      try {
+        if (strOperation === "written") {
+          const res = await SteamClient.Screenshots.UploadLocalScreenshot(
+            unAppID + "",
+            hScreenshot,
+            FilePrivacyState.Private
+          );
+          if (res) {
+            GlobalQueryClient.getQueryCache()
+              .find(`screenshotdetails_local_${unAppID}_${hScreenshot}`)
+              ?.invalidate();
+            await proxy.increaseCounter({ key: "all" });
+            await LocalQueryClient.invalidateQueries(["counter", "all"]);
+            serverApi.toaster.toast({
+              title: "Screenshot uploaded",
+              body: details!.strUrl + "",
+              icon,
+              playSound: false,
+            });
+          }
+        }
+      } catch (e) {
+        serverApi.toaster.toast({
+          title: "Error",
+          body: e + "",
+          icon,
+          playSound: false,
+        });
+        console.error(e);
+      }
+    }
+  );
   return {
-    title: <div className={staticClasses.Title}>Example Plugin</div>,
-    content: <Content serverAPI={serverApi} />,
-    icon: <FaShip />,
+    title: <div className={staticClasses.Title}>Screenshot Uploader</div>,
+    content: (
+      <ServerAPIContext.Provider value={proxy}>
+        <QueryClientProvider client={LocalQueryClient}>
+          <Content />
+        </QueryClientProvider>
+      </ServerAPIContext.Provider>
+    ),
+    icon,
     onDismount() {
-      serverApi.routerHook.removeRoute("/decky-plugin-test");
+      register.unregister();
     },
   };
 });
