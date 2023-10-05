@@ -1,5 +1,6 @@
 import {
   definePlugin,
+  DropdownItem,
   PanelSection,
   PanelSectionRow,
   ServerAPI,
@@ -10,14 +11,15 @@ import { VFC } from "react";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { proxyServerAPI, ServerAPIContext, ServerAPIType } from "./api";
 import { Counter } from "./Components/Counter";
+import { SETTINGS } from "./consts";
 import { useSetting } from "./hooks/useSetting";
 import { icon } from "./icon";
 import { GlobalQueryClient } from "./imported";
-import { SETTINGS } from "./consts";
 
 const Content: VFC = () => {
   const enabled = useSetting(SETTINGS.ENABLED, true);
   const notification = useSetting(SETTINGS.NOTIFICATION_ENABLED, true);
+  const privacy = useSetting(SETTINGS.PRIVACY_STATE, FilePrivacyState.Private);
   return (
     <>
       <PanelSection title="settings">
@@ -33,6 +35,18 @@ const Content: VFC = () => {
             disabled={notification.isLoading}
             label="Notification"
             onChange={(value) => notification.update(value)}
+          />
+          <DropdownItem
+            label="Default privacy state"
+            menuLabel="Privacy state"
+            rgOptions={[
+              { label: "Private", data: FilePrivacyState.Private },
+              { label: "Friends Only", data: FilePrivacyState.FriendsOnly },
+              { label: "Public", data: FilePrivacyState.Public },
+              { label: "Unlisted", data: FilePrivacyState.Unlisted },
+            ]}
+            selectedOption={privacy.value}
+            onChange={(value) => privacy.update(value.data)}
           />
         </PanelSectionRow>
       </PanelSection>
@@ -99,21 +113,39 @@ declare global {
 
 const LocalQueryClient = new QueryClient();
 
+function FilePrivacyStateToString(state: FilePrivacyState) {
+  switch (state) {
+    case FilePrivacyState.Private:
+      return "Private";
+    case FilePrivacyState.FriendsOnly:
+      return "Friends Only";
+    case FilePrivacyState.Public:
+      return "Public";
+    case FilePrivacyState.Unlisted:
+      return "Unlisted";
+  }
+  return "Invalid";
+}
+
 export default definePlugin((serverApi: ServerAPI) => {
   const proxy = proxyServerAPI<ServerAPIType>(serverApi);
   const register = SteamClient.GameSessions.RegisterForScreenshotNotification(
-    async ({ hScreenshot, strOperation, unAppID, details }) => {
+    async ({ hScreenshot, strOperation, unAppID }) => {
       const enabled = await proxy.getSetting({
         key: SETTINGS.ENABLED,
         defaults: true,
       });
       if (!enabled) return;
+      const privacy = await proxy.getSetting({
+        key: SETTINGS.PRIVACY_STATE,
+        defaults: FilePrivacyState.Private,
+      });
       try {
         if (strOperation === "written") {
           const res = await SteamClient.Screenshots.UploadLocalScreenshot(
             unAppID + "",
             hScreenshot,
-            FilePrivacyState.Private
+            privacy
           );
           if (res) {
             GlobalQueryClient.getQueryCache()
@@ -128,7 +160,7 @@ export default definePlugin((serverApi: ServerAPI) => {
             if (notification) {
               serverApi.toaster.toast({
                 title: "Screenshot uploaded",
-                body: details!.strUrl + "",
+                body: "Privacy State: " + FilePrivacyStateToString(privacy),
                 icon,
                 playSound: false,
               });
