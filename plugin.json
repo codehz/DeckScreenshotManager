@@ -4,7 +4,7 @@
   "flags": [],
   "publish": {
     "tags": ["screenshots", "uploader"],
-    "description": "Add screenshot auto uploader because valve don't do it. Uupload screenshots to cloud when screenshot is taken.",
+    "description": "Screenshot auto uploader because valve don't do it. Upload screenshots to cloud when screenshot is taken.",
     "image": "https://github.com/codehz/DeckScreenshotManager/raw/main/assets/logo.png"
   }
 }
