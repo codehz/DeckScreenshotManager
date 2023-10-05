@@ -6,62 +6,33 @@ import {
   staticClasses,
   ToggleField,
 } from "decky-frontend-lib";
-import { useContext, VFC } from "react";
-
-import {
-  QueryClient,
-  QueryClientProvider,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "react-query";
+import { VFC } from "react";
+import { QueryClient, QueryClientProvider } from "react-query";
 import { proxyServerAPI, ServerAPIContext, ServerAPIType } from "./api";
 import { Counter } from "./Components/Counter";
+import { useSetting } from "./hooks/useSetting";
 import { icon } from "./icon";
 import { GlobalQueryClient } from "./imported";
+import { SETTINGS } from "./consts";
 
 const Content: VFC = () => {
-  const serverAPI = useContext(ServerAPIContext);
-  const { data: enabled = true, isLoading } = useQuery(
-    "decky-screenshots-enabled",
-    () =>
-      serverAPI.getSetting<boolean>({
-        key: "enabled",
-        defaults: true,
-      })
-  );
-  const client = useQueryClient();
-  const mutate = useMutation(
-    async (value: boolean) => {
-      await serverAPI.putSetting({
-        key: "enabled",
-        value,
-      });
-    },
-    {
-      onMutate(data) {
-        const old = client.getQueryData("decky-screenshots-enabled");
-        client.setQueryData("decky-screenshots-enabled", data);
-        return { old };
-      },
-      onError(err, _data, context) {
-        serverAPI.toaster.toast({
-          title: "Error",
-          body: err + "",
-        });
-        client.setQueryData("decky-screenshots-enabled", context?.old ?? true);
-      },
-    }
-  );
+  const enabled = useSetting(SETTINGS.ENABLED, true);
+  const notification = useSetting(SETTINGS.NOTIFICATION_ENABLED, true);
   return (
     <>
       <PanelSection title="settings">
         <PanelSectionRow>
           <ToggleField
-            checked={enabled}
-            disabled={isLoading}
+            checked={enabled.value}
+            disabled={enabled.isLoading}
             label="Enabled"
-            onChange={(value) => mutate.mutate(value)}
+            onChange={(value) => enabled.update(value)}
+          />
+          <ToggleField
+            checked={notification.value}
+            disabled={notification.isLoading}
+            label="Notification"
+            onChange={(value) => notification.update(value)}
           />
         </PanelSectionRow>
       </PanelSection>
@@ -133,7 +104,7 @@ export default definePlugin((serverApi: ServerAPI) => {
   const register = SteamClient.GameSessions.RegisterForScreenshotNotification(
     async ({ hScreenshot, strOperation, unAppID, details }) => {
       const enabled = await proxy.getSetting({
-        key: "enabled",
+        key: SETTINGS.ENABLED,
         defaults: true,
       });
       if (!enabled) return;
@@ -150,12 +121,18 @@ export default definePlugin((serverApi: ServerAPI) => {
               ?.invalidate();
             await proxy.increaseCounter({ key: "all" });
             await LocalQueryClient.invalidateQueries(["counter", "all"]);
-            serverApi.toaster.toast({
-              title: "Screenshot uploaded",
-              body: details!.strUrl + "",
-              icon,
-              playSound: false,
+            const notification = await proxy.getSetting({
+              key: SETTINGS.NOTIFICATION_ENABLED,
+              defaults: true,
             });
+            if (notification) {
+              serverApi.toaster.toast({
+                title: "Screenshot uploaded",
+                body: details!.strUrl + "",
+                icon,
+                playSound: false,
+              });
+            }
           }
         }
       } catch (e) {
