@@ -1,7 +1,7 @@
 {
   "name": "ScreenshotUploader",
   "author": "CodeHz",
-  "flags": ["debug", "_root"],
+  "flags": [],
   "publish": {
     "tags": ["screenshots", "uploader"],
     "description": "Add screenshot auto uploader because valve don't do it. Auto upload screenshots to cloud(currently only official storage is supported).",
