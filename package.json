@@ -1,6 +1,6 @@
 {
   "name": "screenshot-uploader",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Screenshot auto uploader because valve don't do it. Upload screenshots to cloud when screenshot is taken.",
   "scripts": {
     "build": "shx rm -rf dist && rollup -c",

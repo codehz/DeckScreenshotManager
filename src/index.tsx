@@ -148,9 +148,19 @@ export default definePlugin((serverApi: ServerAPI) => {
             privacy
           );
           if (res) {
-            GlobalQueryClient.getQueryCache()
-              .find(`screenshotdetails_local_${unAppID}_${hScreenshot}`)
-              ?.invalidate();
+            try {
+              // It doesn't work right now, I just keep this for reference
+              (
+                GlobalQueryClient.getQueryCache().find(
+                  `screenshotdetails_local_${unAppID}_${hScreenshot}`
+                ) ??
+                GlobalQueryClient.getQueryCache().find([
+                  "screenshots",
+                  "screenshotdetails",
+                  `local_${unAppID}_${hScreenshot}`,
+                ])
+              )?.invalidate();
+            } catch {}
             await proxy.increaseCounter({ key: "all" });
             await LocalQueryClient.invalidateQueries(["counter", "all"]);
             const notification = await proxy.getSetting({
