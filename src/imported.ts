@@ -1,4 +1,4 @@
-import { findModuleChild } from "decky-frontend-lib";
+import { findModuleChild } from "@decky/ui";
 
 export const GlobalQueryClient: import("react-query").QueryClient =
   findModuleChild((x) => x?.ReactQueryClient) ??

@@ -1,11 +1,10 @@
-import { useContext } from "react";
+import { toaster } from "@decky/api";
 import { useMutation, useQuery, useQueryClient } from "react-query";
-import { ServerAPIContext } from "../api";
+import api from "../api";
 
 export const useSetting = <T>(key: string, defaults: T) => {
-  const serverAPI = useContext(ServerAPIContext);
   const { data = defaults, isLoading } = useQuery(["settings", key], () =>
-    serverAPI.getSetting<T>({
+    api.getSetting<T>({
       key,
       defaults,
     })
@@ -13,7 +12,7 @@ export const useSetting = <T>(key: string, defaults: T) => {
   const client = useQueryClient();
   const mutate = useMutation(
     async (value: T) => {
-      await serverAPI.putSetting({
+      await api.putSetting({
         key,
         value,
       });
@@ -25,7 +24,7 @@ export const useSetting = <T>(key: string, defaults: T) => {
         return { old };
       },
       onError(err, _data, context) {
-        serverAPI.toaster.toast({
+        toaster.toast({
           title: "Error",
           body: err + "",
         });

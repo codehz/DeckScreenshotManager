@@ -1,19 +1,19 @@
+import { toaster } from "@decky/api";
 import {
   definePlugin,
   DropdownItem,
   PanelSection,
   PanelSectionRow,
-  ServerAPI,
   staticClasses,
   ToggleField,
-} from "decky-frontend-lib";
+} from "@decky/ui";
 import { VFC } from "react";
 import { QueryClient, QueryClientProvider } from "react-query";
-import { proxyServerAPI, ServerAPIContext, ServerAPIType } from "./api";
+import api from "./api";
 import { Counter } from "./Components/Counter";
 import { SETTINGS } from "./consts";
 import { useSetting } from "./hooks/useSetting";
-import { icon } from "./icon";
+import { cloud } from "./icon";
 import { GlobalQueryClient } from "./imported";
 
 const Content: VFC = () => {
@@ -127,16 +127,15 @@ function FilePrivacyStateToString(state: FilePrivacyState) {
   return "Invalid";
 }
 
-export default definePlugin((serverApi: ServerAPI) => {
-  const proxy = proxyServerAPI<ServerAPIType>(serverApi);
+export default definePlugin(() => {
   const register = SteamClient.GameSessions.RegisterForScreenshotNotification(
     async ({ hScreenshot, strOperation, unAppID }) => {
-      const enabled = await proxy.getSetting({
+      const enabled = await api.getSetting({
         key: SETTINGS.ENABLED,
         defaults: true,
       });
       if (!enabled) return;
-      const privacy = await proxy.getSetting({
+      const privacy = await api.getSetting({
         key: SETTINGS.PRIVACY_STATE,
         defaults: FilePrivacyState.Private,
       });
@@ -161,27 +160,27 @@ export default definePlugin((serverApi: ServerAPI) => {
                 ])
               )?.invalidate();
             } catch {}
-            await proxy.increaseCounter({ key: "all" });
+            await api.increaseCounter({ key: "all" });
             await LocalQueryClient.invalidateQueries(["counter", "all"]);
-            const notification = await proxy.getSetting({
+            const notification = await api.getSetting({
               key: SETTINGS.NOTIFICATION_ENABLED,
               defaults: true,
             });
             if (notification) {
-              serverApi.toaster.toast({
+              toaster.toast({
                 title: "Screenshot uploaded",
                 body: "Privacy State: " + FilePrivacyStateToString(privacy),
-                icon,
+                icon: cloud,
                 playSound: false,
               });
             }
           }
         }
       } catch (e) {
-        serverApi.toaster.toast({
+        toaster.toast({
           title: "Error",
           body: e + "",
-          icon,
+          icon: cloud,
           playSound: false,
         });
         console.error(e);
@@ -191,13 +190,11 @@ export default definePlugin((serverApi: ServerAPI) => {
   return {
     title: <div className={staticClasses.Title}>Screenshot Uploader</div>,
     content: (
-      <ServerAPIContext.Provider value={proxy}>
-        <QueryClientProvider client={LocalQueryClient}>
-          <Content />
-        </QueryClientProvider>
-      </ServerAPIContext.Provider>
+      <QueryClientProvider client={LocalQueryClient}>
+        <Content />
+      </QueryClientProvider>
     ),
-    icon,
+    icon: cloud,
     onDismount() {
       register.unregister();
     },

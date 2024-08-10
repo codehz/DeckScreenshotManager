@@ -1,19 +1,18 @@
-import { Field } from "decky-frontend-lib";
-import { VFC, useContext } from "react";
+import { Field } from "@decky/ui";
+import { VFC } from "react";
 import { useQuery } from "react-query";
-import { ServerAPIContext } from "../api";
+import api from "../api";
 
 export const Counter: VFC<{ label: string; field: string }> = ({
   label,
   field: key,
 }) => {
-  const serverAPI = useContext(ServerAPIContext);
   const { data, isLoading } = useQuery(["counter", key], () =>
-    serverAPI.getCounter({ key })
+    api.getCounter({ key })
   );
   return (
     <Field label={label} focusable>
-      {isLoading ? "Loading..." : data + ''}
+      {isLoading ? "Loading..." : data + ""}
     </Field>
   );
 };

@@ -1,5 +1,4 @@
-import { ServerAPI } from "decky-frontend-lib";
-import { createContext } from "react";
+import { call } from "@decky/api";
 
 export interface ServerAPIType {
   getSetting<T>(args: { key: string; defaults?: T }): Promise<T>;
@@ -8,22 +7,8 @@ export interface ServerAPIType {
   getCounter(args: { key: string }): Promise<number>;
 }
 
-export function proxyServerAPI<T>(api: ServerAPI) {
-  return new Proxy(api, {
-    get(obj: any, key: string) {
-      return (
-        obj[key] ??
-        (async (args: any = {}) => {
-          const response = await api.callPluginMethod(key, args);
-          if (response.success) {
-            return response.result;
-          } else throw new Error("Failed to call plugin method " + key);
-        })
-      );
-    },
-  }) as ServerAPI & Exclude<T, keyof ServerAPI>;
-}
-
-export const ServerAPIContext = createContext<ServerAPI & ServerAPIType>(
-  {} as never
-);
+export default new Proxy(call, {
+  get(obj: any, key: string) {
+    return obj[key] ?? ((args: any = {}) => call<any[], any>(key, ...args));
+  },
+}) as ServerAPIType & typeof call;
